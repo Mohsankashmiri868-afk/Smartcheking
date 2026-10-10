@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10233f">
+<title>SmartCheck QC — Used Mobile Inspection</title>
+<style>
+:root{--navy:#10233f;--blue:#2459a9;--bg:#f3f6fb;--ink:#17253a;--muted:#68778d;--line:#dce4ef;--green:#137a51;--red:#b42318;--amber:#9a6700}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:linear-gradient(120deg,#10233f,#2459a9);color:white;padding:22px 16px 26px}
+.wrap{max-width:1000px;margin:auto}h1{margin:0;font-size:25px}header p{margin:7px 0 0;color:#dce8ff;font-size:14px}
+main{max-width:1000px;margin:16px auto;padding:0 12px 36px}.grid{display:grid;grid-template-columns:1fr;gap:14px}
+.card{background:white;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 4px 16px #10233f0a}
+h2{font-size:18px;margin:0 0 14px}.fields{display:grid;grid-template-columns:1fr;gap:12px}
+label{display:block;font-size:13px;font-weight:700;color:#43536a;margin-bottom:6px}
+input,select,textarea{width:100%;border:1px solid #cbd6e5;border-radius:10px;padding:12px;font:inherit;background:white;color:var(--ink)}
+textarea{min-height:75px;resize:vertical}
+.tests{display:grid;grid-template-columns:1fr;gap:10px}
+.test{border:1px solid var(--line);border-radius:12px;padding:11px}
+.test .name{font-weight:650;margin-bottom:9px}
+.choices{display:flex;gap:8px;flex-wrap:wrap}
+.choice{display:flex;align-items:center;gap:5px;border:1px solid #d5deeb;border-radius:9px;padding:7px 9px;font-size:13px}
+.choice input{width:auto;margin:0}
+.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+button{border:0;border-radius:10px;padding:12px 14px;font:inherit;font-weight:700;cursor:pointer}
+.primary{background:var(--blue);color:white}.secondary{background:#e8eef8;color:#1a3e76}.danger{background:#fff0ef;color:var(--red)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:14px}
+.stat{background:#f7f9fd;border:1px solid var(--line);padding:12px;border-radius:12px}.stat strong{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}
+.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted)}
+.pill{display:inline-block;border-radius:99px;padding:4px 8px;font-size:12px;font-weight:700}.pass{background:#e7f7ee;color:var(--green)}.fail{background:#ffedeb;color:var(--red)}.pending{background:#fff4d6;color:var(--amber)}
+.note{font-size:12px;color:var(--muted);line-height:1.5}.status{margin-top:10px;font-weight:700}
+@media(min-width:760px){.grid{grid-template-columns:1.1fr .9fr}.fields{grid-template-columns:1fr 1fr}.tests{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>📱 SmartCheck QC</h1><p>Used Mobile Inspection • Quality Control Record</p></div></header>
+<main>
+<div class="grid">
+<section class="card">
+<h2>New inspection</h2>
+<form id="qcForm">
+<div class="fields">
+<div><label for="date">Inspection date</label><input id="date" type="date" required></div>
+<div><label for="checker">Checker name / ID</label><input id="checker" placeholder="Your name or staff ID"></div>
+<div><label for="model">Phone model *</label><input id="model" placeholder="e.g. iPhone 13" required></div>
+<div><label for="imei">IMEI / company asset ID *</label><input id="imei" inputmode="numeric" placeholder="Enter company-approved ID" required></div>
+<div><label for="grade">Cosmetic grade</label><select id="grade"><option>A</option><option selected>B</option><option>C</option><option>D</option><option>Parts / Repair</option></select></div>
+<div><label for="source">Source / batch (optional)</label><input id="source" placeholder="Batch or supplier code"></div>
+</div>
+<h2 style="margin-top:20px">Function tests</h2>
+<div id="tests" class="tests"></div>
+<div style="margin-top:14px"><label for="notes">Fault details / notes</label><textarea id="notes" placeholder="Describe any fault, marks, or retest needed"></textarea></div>
+<div id="result" class="status" aria-live="polite">Complete all required checks before approving.</div>
+<div class="buttons"><button class="primary" type="submit">Save inspection</button><button class="secondary" type="button" id="reset">Clear form</button></div>
+<p class="note">Prototype note: records are saved only in this browser on this device. They are not synced online to your company. Do not enter real IMEI/customer/company-confidential data until an approved secure database is connected.</p>
+</form>
+</section>
+<section class="card">
+<h2>Inspection overview</h2>
+<div class="stats">
+<div class="stat"><strong id="total">0</strong><span>Total checked</span></div>
+<div class="stat"><strong id="passed">0</strong><span>All checks passed</span></div>
+<div class="stat"><strong id="failed">0</strong><span>Failed / hold</span></div>
+<div class="stat"><strong id="rate">0%</strong><span>Pass rate</span></div>
+</div>
+<div class="buttons" style="margin-top:0;margin-bottom:12px">
+<button class="secondary" id="export" type="button">Export CSV</button>
+<button class="danger" id="clearAll" type="button">Delete all records</button>
+</div>
+<div class="tablewrap">
+<table><thead><tr><th>Date</th><th>Model</th><th>ID (last 4)</th><th>Checker</th><th>Result</th></tr></thead><tbody id="records"><tr><td colspan="5">No records yet.</td></tr></tbody></table>
+</div>
+<p class="note">A “PASS” here means every test listed below was marked Pass. A failed or untested function should be held for authorized review. This form does not itself diagnose hardware.</p>
+</section>
+</div>
+</main>
+<script>
+const testNames = [
+  ["lcd","LCD / Display"],["touch","Touchscreen"],["camera","Front & rear camera"],
+  ["battery","Battery / health"],["charging","Charging port"],["speaker","Speaker & microphone"],
+  ["buttons","Buttons / vibration"],["biometric","Face ID / fingerprint"],["network","SIM / Wi‑Fi / Bluetooth"],
+  ["sensors","Sensors"],["body","Body / screws / water signs"],["account","Activation lock / account status"]
+];
+const $ = id => document.getElementById(id);
+const STORAGE_KEY = "smartcheck_qc_demo_v1";
+let records = [];
+try { records = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch(e) { records = []; }
+$("date").value = new Date().toISOString().slice(0,10);
+$("tests").innerHTML = testNames.map(([id,name]) => `<div class="test"><div class="name">${name}</div><div class="choices">${["Pass","Fail","Not tested"].map(v=>`<label class="choice"><input type="radio" name="${id}" value="${v}" ${v==="Not tested"?"checked":""}>${v}</label>`).join("")}</div></div>`).join("");
+function getTestValues(){const o={}; for(const [id] of testNames){o[id]=document.querySelector(`input[name="${id}"]:checked`)?.value || "Not tested";} return o;}
+function statusOf(tests){const vals=Object.values(tests); if(vals.some(v=>v==="Fail")) return "FAIL / HOLD"; if(vals.some(v=>v==="Not tested")) return "INCOMPLETE"; return "PASS";}
+function updateResult(){const s=statusOf(getTestValues()); $("result").textContent = s==="PASS" ? "PASS — all listed tests marked Pass" : s==="FAIL / HOLD" ? "FAIL / HOLD — send for authorized review" : "INCOMPLETE — finish all checks"; $("result").style.color = s==="PASS" ? "#137a51" : s==="FAIL / HOLD" ? "#b42318" : "#9a6700";}
+$("tests").addEventListener("change",updateResult);
+function saveLocal(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));}catch(e){alert("Could not save in this browser. Please export your records.");}}
+function render(){
+ $("total").textContent=records.length;
+ const good=records.filter(r=>r.result==="PASS").length;
+ $("passed").textContent=good; $("failed").textContent=records.length-good;
+ $("rate").textContent=records.length?Math.round(good/records.length*100)+"%":"0%";
+ const body=$("records");
+ if(!records.length){body.innerHTML='<tr><td colspan="5">No records yet.</td></tr>';return;}
+ body.innerHTML=records.slice().reverse().map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.model)}</td><td>••••${esc(r.id.slice(-4))}</td><td>${esc(r.checker||"—")}</td><td><span class="pill ${r.result==="PASS"?"pass":r.result==="INCOMPLETE"?"pending":"fail"}">${esc(r.result)}</span></td></tr>`).join("");
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+$("qcForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ const tests=getTestValues();
+ const record={date:$("date").value,checker:$("checker").value.trim(),model:$("model").value.trim(),id:$("imei").value.trim(),grade:$("grade").value,source:$("source").value.trim(),notes:$("notes").value.trim(),tests,result:statusOf(tests),createdAt:new Date().toISOString()};
+ if(!record.model||!record.id){alert("Enter model and company-approved ID.");return;}
+ records.push(record);saveLocal();render();alert("Inspection saved in this browser.");$("qcForm").reset();$("date").value=new Date().toISOString().slice(0,10);updateResult();
+});
+$("reset").addEventListener("click",()=>{ $("qcForm").reset(); $("date").value=new Date().toISOString().slice(0,10); updateResult(); });
+$("export").addEventListener("click",()=>{
+ if(!records.length){alert("No records to export yet.");return;}
+ const headers=["date","checker","model","id","grade","source","result",...testNames.map(t=>t[0]),"notes"];
+ const quote=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+ const rows=[headers.join(","),...records.map(r=>headers.map(h=>quote(h in (r.tests||{})?r.tests[h]:r[h])).join(","))];
+ const blob=new Blob(["\ufeff"+rows.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="SmartCheck-QC-records.csv";a.click();URL.revokeObjectURL(a.href);
+});
+$("clearAll").addEventListener("click",()=>{if(confirm("Delete all saved records from this browser? Export first if needed.")){records=[];saveLocal();render();}});
+updateResult();render();
+</script>
+</body></html>
