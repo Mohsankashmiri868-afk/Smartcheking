@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartCheck Mobile QC</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#172033}
+header{background:#102b46;color:white;padding:22px 16px;text-align:center}
+header h1{margin:0 0 7px;color:#63e6be}
+header p{margin:0;font-size:14px}
+main{max-width:650px;margin:auto;padding:16px}
+.card{background:white;padding:16px;margin-bottom:15px;border-radius:14px;box-shadow:0 2px 9px #0000000d}
+h2{font-size:18px;margin:0 0 14px}
+label{display:block;font-size:14px;font-weight:bold;margin:12px 0 6px}
+input,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:16px;background:white}
+.test{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0;border-bottom:1px solid #e5e7eb}
+.test:last-child{border:0}
+.test span{font-size:14px;font-weight:600}
+.actions{display:flex;gap:5px}
+button{border:0;border-radius:8px;padding:10px 12px;font-weight:bold;cursor:pointer}
+.pass{background:#dcfce7;color:#166534}
+.fail{background:#fee2e2;color:#991b1b}
+.na{background:#e2e8f0;color:#334155}
+.active{outline:2px solid #334155}
+.primary{background:#087f5b;color:white;width:100%;padding:14px;margin-top:8px;font-size:15px}
+.secondary{background:#dbeafe;color:#1d4ed8;width:100%;padding:13px;margin-top:8px}
+#summary{line-height:1.8;font-size:14px}
+small{color:#64748b}
+</style>
+</head>
+<body>
+<header>
+<h1>SmartCheck</h1>
+<p>Used Mobile Phone Testing & Quality Control</p>
+</header>
+<main>
+<section class="card">
+<h2>📱 Device Information</h2>
+<label>Phone Brand / Model</label>
+<input id="model" placeholder="e.g. iPhone 13 Pro">
+<label>IMEI / Serial (optional)</label>
+<input id="imei" placeholder="Optional — avoid sharing publicly">
+<label>Technician Name</label>
+<input id="tech" placeholder="Enter technician name">
+<label>Inspection Date</label>
+<input id="date" type="date">
+<label>Overall Condition</label>
+<select id="condition">
+<option>Not assessed</option>
+<option>Excellent</option>
+<option>Good</option>
+<option>Fair</option>
+<option>Poor</option>
+</select>
+</section>
+
+<section class="card">
+<h2>🧪 Hardware & Function Tests</h2>
+<div id="tests"></div>
+</section>
+
+<section class="card">
+<h2>📝 Notes / Defects</h2>
+<label>Inspection Notes</label>
+<input id="notes" placeholder="Describe any faults or damage">
+<label>Final Decision</label>
+<select id="decision">
+<option>Pending inspection</option>
+<option>Pass</option>
+<option>Fail</option>
+<option>Needs repair</option>
+</select>
+</section>
+
+<section class="card">
+<h2>📊 Inspection Summary</h2>
+<div id="summary">Tests completed: 0</div>
+<button class="primary" onclick="exportCSV()">Export Report (CSV)</button>
+<button class="secondary" onclick="resetTests()">Reset Test Results</button>
+<small>Report is generated on your device. Keep customer information private.</small>
+</section>
+</main>
+<script>
+const names=[
+"LCD / Display","Touchscreen","Dead Pixels","Front Camera",
+"Rear Camera","Battery Health","Charging Port","Speaker",
+"Microphone","Earpiece","Volume Buttons","Power Button",
+"Vibration","Wi-Fi","Mobile Network","Bluetooth",
+"Face ID / Fingerprint","Proximity Sensor","Flashlight",
+"Body / Frame","SIM Card","Activation Lock Checked"
+];
+const results={};
+const container=document.getElementById("tests");
+names.forEach((name,i)=>{
+results[name]="Not tested";
+const row=document.createElement("div");
+row.className="test";
+const title=document.createElement("span");
+title.textContent=name;
+const actions=document.createElement("div");
+actions.className="actions";
+[["Pass","pass"],["Fail","fail"],["N/A","na"]].forEach(([label,cls])=>{
+const btn=document.createElement("button");
+btn.textContent=label;
+btn.className=cls;
+btn.onclick=()=>{
+results[name]=label==="N/A"?"N/A":label;
+actions.querySelectorAll("button").forEach(b=>b.classList.remove("active"));
+btn.classList.add("active");
+updateSummary();
+};
+actions.appendChild(btn);
+});
+row.append(title,actions);
+container.appendChild(row);
+});
+document.getElementById("date").value=new Date().toISOString().slice(0,10);
+function updateSummary(){
+let pass=0,fail=0,na=0,pending=0;
+Object.values(results).forEach(v=>{
+if(v==="Pass")pass++;
+else if(v==="Fail")fail++;
+else if(v==="N/A")na++;
+else pending++;
+});
+document.getElementById("summary").innerHTML=
+"Total tests: "+names.length+"<br>✅ Pass: "+pass+
+"<br>❌ Fail: "+fail+"<br>➖ N/A: "+na+
+"<br>⏳ Not tested: "+pending;
+}
+function exportCSV(){
+const fields=[
+["Phone Model",document.getElementById("model").value],
+["IMEI / Serial",document.getElementById("imei").value],
+["Technician",document.getElementById("tech").value],
+["Date",document.getElementById("date").value],
+["Condition",document.getElementById("condition").value],
+["Final Decision",document.getElementById("decision").value],
+["Notes",document.getElementById("notes").value]
+];
+let rows=[["SmartCheck Mobile QC Report"],["Field","Value"],...fields,[],["Test","Result"]];
+names.forEach(n=>rows.push([n,results[n]]));
+const csv=rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;
+a.download="SmartCheck_Report.csv";
+a.click();
+URL.revokeObjectURL(url);
+}
+function resetTests(){
+if(!confirm("Reset all test results?"))return;
+names.forEach(n=>results[n]="Not tested");
+container.querySelectorAll(".test").forEach(row=>
+row.querySelectorAll("button").forEach(b=>b.classList.remove("active")));
+updateSummary();
+}
+updateSummary();
+</script>
+</body>
+</html>
